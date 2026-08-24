@@ -4,47 +4,172 @@ export default {
   /**
    * An asynchronous register function that runs before
    * your application is initialized.
-   *
-   * This gives you an opportunity to extend code.
    */
-  register({ strapi }: { strapi: Core.Strapi }) {},
+  register({ strapi }: { strapi: Core.Strapi }) {
+    const extensionService = strapi.plugin('users-permissions').controller('auth');
+    const originalRegister = extensionService.register;
+    
+    extensionService.register = async (ctx: any, next: any) => {
+      const requestedRole = ctx.request.query.requestedRole || 'authenticated';
+      const ALLOWED_ROLES = ['authenticated', 'instructor'];
+      
+      if (!ALLOWED_ROLES.includes(requestedRole)) {
+        return ctx.badRequest('Invalid role requested');
+      }
+      
+      await originalRegister(ctx, next);
+      
+      if (ctx.response.status === 200 && requestedRole !== 'authenticated') {
+        const roleService = strapi.db.query('plugin::users-permissions.role');
+        const role = await roleService.findOne({ where: { type: requestedRole } });
+        if (role && ctx.response.body?.user?.id) {
+          await strapi.db.query('plugin::users-permissions.user').update({
+            where: { id: ctx.response.body.user.id },
+            data: { role: role.id }
+          });
+        }
+      }
+    };
+  },
 
   /**
    * An asynchronous bootstrap function that runs before
    * your application gets started.
-   *
-   * This gives you an opportunity to set up your data model,
-   * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
-    // Enable Public permissions for TestPost
-    const roleService = strapi.db.query('plugin::users-permissions.role');
-    const publicRole = await roleService.findOne({ where: { type: 'public' } });
+    // ── Step 1: Seed custom roles ──
+    const roleQuery = strapi.db.query('plugin::users-permissions.role');
+    
+    const rolesToSeed = [
+      { name: 'Admin', description: 'Full platform control — manages users, roles, and all content', type: 'admin_role' },
+      { name: 'Content Manager', description: 'Creates and manages all courses, lessons, and blog posts', type: 'content_manager' },
+      { name: 'Instructor', description: 'Manages own courses, lessons, quizzes; views own students progress', type: 'instructor' },
+    ];
 
-    if (publicRole) {
-      const permissionService = strapi.db.query('plugin::users-permissions.permission');
-      const actions = ['api::test-post.test-post.find', 'api::test-post.test-post.findOne'];
-      
-      for (const action of actions) {
-        const existing = await permissionService.findOne({ where: { role: publicRole.id, action } });
-        if (!existing) {
-          await permissionService.create({
-            data: { role: publicRole.id, action, enabled: true },
-          });
-          strapi.log.info(`Enabled public permission: ${action}`);
-        }
+    for (const role of rolesToSeed) {
+      const existing = await roleQuery.findOne({ where: { type: role.type } });
+      if (!existing) {
+        await roleQuery.create({ data: role });
+        strapi.log.info(`✅ Created role: ${role.name} (type: ${role.type})`);
       }
     }
 
-    // Seed a test post
-    const testPostService = strapi.db.query('api::test-post.test-post');
-    const existingPost = await testPostService.findOne({ where: { title: 'Hello LMS' } });
-    if (!existingPost) {
-      await testPostService.create({
-        data: { title: 'Hello LMS', body: 'This is a test post to verify the connection.' },
-        populate: true, // Strapi v5 requires explicit populate or it might not return everything in some contexts
-      });
-      strapi.log.info('Created test post');
-    }
+    // ── Step 2: Set permissions ──
+    await setAllPermissions(strapi);
+    strapi.log.info('✅ All role permissions configured');
   },
 };
+
+type PermissionMap = Record<string, Record<string, string[]>>;
+
+const PERMISSION_MAP: PermissionMap = {
+  public: {
+    'api::course.course':       ['find', 'findOne'],
+    'api::blog-post.blog-post': ['find', 'findOne'],
+  },
+  authenticated: {
+    'api::course.course':             ['find', 'findOne'],
+    'api::lesson.lesson':             ['find', 'findOne'],
+    'api::quiz.quiz':                 ['find', 'findOne'],
+    'api::question.question':         ['find', 'findOne'],
+    'api::enrollment.enrollment':     ['find', 'findOne', 'create'],
+    'api::progress.progress':         ['find', 'findOne', 'create', 'update'],
+    'api::blog-post.blog-post':       ['find', 'findOne'],
+    'api::quiz-attempt.quiz-attempt': ['find', 'findOne', 'create'],
+  },
+  instructor: {
+    'api::course.course':             ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::lesson.lesson':             ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::quiz.quiz':                 ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::question.question':         ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::enrollment.enrollment':     ['find', 'findOne'],
+    'api::progress.progress':         ['find', 'findOne'],
+    'api::blog-post.blog-post':       ['find', 'findOne'],
+    'api::quiz-attempt.quiz-attempt': ['find', 'findOne'],
+  },
+  content_manager: {
+    'api::course.course':             ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::lesson.lesson':             ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::quiz.quiz':                 ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::question.question':         ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::enrollment.enrollment':     ['find', 'findOne'],
+    'api::progress.progress':         ['find', 'findOne'],
+    'api::blog-post.blog-post':       ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::quiz-attempt.quiz-attempt': ['find', 'findOne'],
+  },
+  admin_role: {
+    'api::course.course':             ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::lesson.lesson':             ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::quiz.quiz':                 ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::question.question':         ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::enrollment.enrollment':     ['find', 'findOne', 'delete'],
+    'api::progress.progress':         ['find', 'findOne'],
+    'api::blog-post.blog-post':       ['find', 'findOne', 'create', 'update', 'delete'],
+    'api::quiz-attempt.quiz-attempt': ['find', 'findOne', 'delete'],
+  },
+};
+
+const PLUGIN_PERMISSION_MAP: Record<string, Record<string, string[]>> = {
+  public: {
+    'plugin::users-permissions.auth': ['callback', 'register'],
+  },
+  authenticated: {
+    'plugin::users-permissions.auth': ['callback'],
+    'plugin::users-permissions.user': ['me'],
+  },
+  instructor: {
+    'plugin::users-permissions.auth': ['callback'],
+    'plugin::users-permissions.user': ['me'],
+  },
+  content_manager: {
+    'plugin::users-permissions.auth': ['callback'],
+    'plugin::users-permissions.user': ['me'],
+  },
+  admin_role: {
+    'plugin::users-permissions.auth': ['callback'],
+    'plugin::users-permissions.user': ['me', 'find', 'findOne', 'update', 'destroy'],
+  },
+};
+
+async function setAllPermissions(strapi: Core.Strapi) {
+  const permQuery = strapi.db.query('plugin::users-permissions.permission');
+  const roleQuery = strapi.db.query('plugin::users-permissions.role');
+  
+  for (const [roleType, contentTypes] of Object.entries(PERMISSION_MAP)) {
+    const role = await roleQuery.findOne({ where: { type: roleType } });
+    if (!role) continue;
+    
+    for (const [contentType, actions] of Object.entries(contentTypes)) {
+      for (const action of actions) {
+        const actionString = `${contentType}.${action}`;
+        const existing = await permQuery.findOne({
+          where: { action: actionString, role: role.id },
+        });
+        if (!existing) {
+          await permQuery.create({
+            data: { action: actionString, role: role.id, enabled: true },
+          });
+        }
+      }
+    }
+  }
+  
+  for (const [roleType, plugins] of Object.entries(PLUGIN_PERMISSION_MAP)) {
+    const role = await roleQuery.findOne({ where: { type: roleType } });
+    if (!role) continue;
+    
+    for (const [pluginAction, actions] of Object.entries(plugins)) {
+      for (const action of actions) {
+        const actionString = `${pluginAction}.${action}`;
+        const existing = await permQuery.findOne({
+          where: { action: actionString, role: role.id },
+        });
+        if (!existing) {
+          await permQuery.create({
+            data: { action: actionString, role: role.id, enabled: true },
+          });
+        }
+      }
+    }
+  }
+}
