@@ -57,6 +57,37 @@ export default {
     // ── Step 2: Set permissions ──
     await setAllPermissions(strapi);
     strapi.log.info('✅ All role permissions configured');
+
+    // ── Step 3: Seed a default frontend Admin User ──
+    const userQuery = strapi.db.query('plugin::users-permissions.user');
+    const adminRole = await roleQuery.findOne({ where: { type: 'admin_role' } });
+    
+    if (adminRole) {
+      const adminExists = await userQuery.findOne({ where: { email: 'admin@lms.com' } });
+      if (!adminExists) {
+        // Use the users-permissions user service which automatically hashes the password
+        await strapi.plugin('users-permissions').service('user').add({
+          username: 'SuperAdmin',
+          email: 'admin@lms.com',
+          password: 'AdminPassword123!',
+          provider: 'local',
+          confirmed: true,
+          blocked: false,
+          role: adminRole.id,
+        });
+        strapi.log.info('✅ Created default frontend Admin (admin@lms.com / AdminPassword123!)');
+      } else {
+        // Force update the provider and reset password just in case it was created incorrectly
+        const authService = strapi.plugin('users-permissions').service('user');
+        await strapi.plugin('users-permissions').service('user').edit(adminExists.id, {
+          password: 'AdminPassword123!',
+          provider: 'local',
+          confirmed: true,
+          blocked: false,
+        });
+        strapi.log.info('✅ Reset default frontend Admin (admin@lms.com / AdminPassword123!)');
+      }
+    }
   },
 };
 
@@ -106,6 +137,7 @@ const PERMISSION_MAP: PermissionMap = {
     'api::progress.progress':         ['find', 'findOne'],
     'api::blog-post.blog-post':       ['find', 'findOne', 'create', 'update', 'delete'],
     'api::quiz-attempt.quiz-attempt': ['find', 'findOne', 'delete'],
+    'api::admin-custom.admin-custom': ['getStats', 'getUsers', 'updateUserRole', 'deleteUser'],
   },
 };
 
@@ -128,6 +160,7 @@ const PLUGIN_PERMISSION_MAP: Record<string, Record<string, string[]>> = {
   admin_role: {
     'plugin::users-permissions.auth': ['callback'],
     'plugin::users-permissions.user': ['me', 'find', 'findOne', 'update', 'destroy'],
+    'plugin::users-permissions.role': ['find'],
   },
 };
 
