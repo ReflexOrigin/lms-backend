@@ -85,10 +85,12 @@ exports.default = {
 const PERMISSION_MAP = {
     public: {
         'api::course.course': ['find', 'findOne'],
+        'api::category.category': ['find', 'findOne'],
         'api::blog-post.blog-post': ['find', 'findOne'],
     },
     authenticated: {
         'api::course.course': ['find', 'findOne'],
+        'api::category.category': ['find', 'findOne'],
         'api::lesson.lesson': ['find', 'findOne'],
         'api::quiz.quiz': ['find', 'findOne'],
         'api::question.question': ['find', 'findOne'],
@@ -99,6 +101,7 @@ const PERMISSION_MAP = {
     },
     instructor: {
         'api::course.course': ['find', 'findOne', 'create', 'update', 'delete'],
+        'api::category.category': ['find', 'findOne'],
         'api::lesson.lesson': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::quiz.quiz': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::question.question': ['find', 'findOne', 'create', 'update', 'delete'],
@@ -109,6 +112,7 @@ const PERMISSION_MAP = {
     },
     content_manager: {
         'api::course.course': ['find', 'findOne', 'create', 'update', 'delete'],
+        'api::category.category': ['find', 'findOne'],
         'api::lesson.lesson': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::quiz.quiz': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::question.question': ['find', 'findOne', 'create', 'update', 'delete'],
@@ -119,6 +123,7 @@ const PERMISSION_MAP = {
     },
     admin_role: {
         'api::course.course': ['find', 'findOne', 'create', 'update', 'delete'],
+        'api::category.category': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::lesson.lesson': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::quiz.quiz': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::question.question': ['find', 'findOne', 'create', 'update', 'delete'],

@@ -25,6 +25,12 @@
             "type": "relation",
             "relation": "manyToOne",
             "target": "plugin::users-permissions.user"
+        },
+        "category": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::category.category",
+            "inversedBy": "blogPosts"
         }
     }
 }

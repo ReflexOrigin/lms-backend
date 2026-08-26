@@ -54,7 +54,6 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
 
     ctx.request.body.data = {
       quiz: quizId,
-      student: user.documentId,
       answers: submittedAnswers,
       score,
       totalQuestions,
@@ -62,7 +61,16 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
       attemptedAt: new Date().toISOString()
     };
 
-    return await super.create(ctx);
+    const response = await super.create(ctx);
+    
+    if (user && response?.data?.documentId) {
+      await strapi.documents('api::quiz-attempt.quiz-attempt').update({
+        documentId: response.data.documentId,
+        data: { student: user.documentId }
+      });
+    }
+
+    return response;
   },
   
   async update(ctx: any) {

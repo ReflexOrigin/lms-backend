@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strapi_1 = require("@strapi/strapi");
 exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.quiz-attempt', ({ strapi }) => ({
     async create(ctx) {
+        var _a;
         const user = ctx.state.user;
         // Safety check
         if (!user) {
@@ -42,14 +43,20 @@ exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.qui
         // Actually, creating a new attempt is fine (tracking history), but let's see if we want to overwrite. The plan just says "Student can review their attempt". We'll just create it.
         ctx.request.body.data = {
             quiz: quizId,
-            student: user.documentId,
             answers: submittedAnswers,
             score,
             totalQuestions,
             percentage,
             attemptedAt: new Date().toISOString()
         };
-        return await super.create(ctx);
+        const response = await super.create(ctx);
+        if (user && ((_a = response === null || response === void 0 ? void 0 : response.data) === null || _a === void 0 ? void 0 : _a.documentId)) {
+            await strapi.documents('api::quiz-attempt.quiz-attempt').update({
+                documentId: response.data.documentId,
+                data: { student: user.documentId }
+            });
+        }
+        return response;
     },
     async update(ctx) {
         return ctx.forbidden('Quiz attempts cannot be modified once submitted.');
