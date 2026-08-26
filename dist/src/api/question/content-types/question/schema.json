@@ -18,9 +18,21 @@
             "type": "json",
             "required": true
         },
+        "type": {
+            "type": "enumeration",
+            "enum": [
+                "mcq",
+                "multi_select"
+            ],
+            "default": "mcq"
+        },
         "correctAnswer": {
-            "type": "integer",
+            "type": "json",
             "required": true,
+            "private": true
+        },
+        "feedback": {
+            "type": "text",
             "private": true
         },
         "quiz": {

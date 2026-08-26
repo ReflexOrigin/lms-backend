@@ -137,14 +137,15 @@ const PERMISSION_MAP = {
 const PLUGIN_PERMISSION_MAP = {
     public: {
         'plugin::users-permissions.auth': ['callback', 'register'],
+        'plugin::users-permissions.user': ['find', 'findOne'],
     },
     authenticated: {
         'plugin::users-permissions.auth': ['callback'],
-        'plugin::users-permissions.user': ['me'],
+        'plugin::users-permissions.user': ['me', 'find', 'findOne'],
     },
     instructor: {
         'plugin::users-permissions.auth': ['callback'],
-        'plugin::users-permissions.user': ['me'],
+        'plugin::users-permissions.user': ['me', 'find', 'findOne'],
     },
     content_manager: {
         'plugin::users-permissions.auth': ['callback'],

@@ -26,7 +26,7 @@ exports.default = async (policyContext, config, { strapi }) => {
     const enrollment = await strapi.db.query('api::enrollment.enrollment').findOne({
         where: {
             student: user.id,
-            course: courseId,
+            course: { documentId: entity[courseField].documentId },
         },
     });
     return !!enrollment;

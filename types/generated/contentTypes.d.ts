@@ -551,6 +551,7 @@ export interface ApiCourseCourse extends Struct.CollectionTypeSchema {
     >;
     publishedAt: Schema.Attribute.DateTime;
     quizzes: Schema.Attribute.Relation<'oneToMany', 'api::quiz.quiz'>;
+    slug: Schema.Attribute.UID<'title'>;
     thumbnail: Schema.Attribute.String;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
@@ -581,6 +582,8 @@ export interface ApiEnrollmentEnrollment extends Struct.CollectionTypeSchema {
       'api::enrollment.enrollment'
     > &
       Schema.Attribute.Private;
+    progressPercentage: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
     publishedAt: Schema.Attribute.DateTime;
     student: Schema.Attribute.Relation<
       'manyToOne',
@@ -637,6 +640,8 @@ export interface ApiProgressProgress extends Struct.CollectionTypeSchema {
   attributes: {
     completed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     completedAt: Schema.Attribute.DateTime;
+    completionPercentage: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<0>;
     course: Schema.Attribute.Relation<'manyToOne', 'api::course.course'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -649,6 +654,10 @@ export interface ApiProgressProgress extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      ['not_started', 'in_progress', 'completed']
+    > &
+      Schema.Attribute.DefaultTo<'not_started'>;
     student: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.user'
@@ -670,12 +679,13 @@ export interface ApiQuestionQuestion extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
-    correctAnswer: Schema.Attribute.Integer &
+    correctAnswer: Schema.Attribute.JSON &
       Schema.Attribute.Required &
       Schema.Attribute.Private;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    feedback: Schema.Attribute.Text & Schema.Attribute.Private;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -686,6 +696,8 @@ export interface ApiQuestionQuestion extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     quiz: Schema.Attribute.Relation<'manyToOne', 'api::quiz.quiz'>;
     text: Schema.Attribute.String & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<['mcq', 'multi_select']> &
+      Schema.Attribute.DefaultTo<'mcq'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -747,6 +759,7 @@ export interface ApiQuizQuiz extends Struct.CollectionTypeSchema {
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::quiz.quiz'> &
       Schema.Attribute.Private;
+    maxAttempts: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
     publishedAt: Schema.Attribute.DateTime;
     questions: Schema.Attribute.Relation<'oneToMany', 'api::question.question'>;
     title: Schema.Attribute.String & Schema.Attribute.Required;

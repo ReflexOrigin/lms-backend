@@ -23,6 +23,10 @@
       "relation": "manyToOne",
       "target": "api::course.course",
       "inversedBy": "enrollments"
+    },
+    "progressPercentage": {
+      "type": "integer",
+      "default": 0
     }
   }
 }
