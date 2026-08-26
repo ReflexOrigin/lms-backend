@@ -24,5 +24,25 @@ module.exports = (plugin) => {
             }
         }
     };
+    const originalMe = plugin.controllers.user.me;
+    plugin.controllers.user.me = async (ctx) => {
+        // Call the original `me` controller to get the base user
+        await originalMe(ctx);
+        // If successful and we have a user
+        if (ctx.response.status === 200 && ctx.response.body) {
+            // Fetch the full user with the role populated
+            const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+                where: { id: ctx.state.user.id },
+                populate: ['role'],
+            });
+            // Update the response with the populated user (manually sanitized)
+            if (fullUser) {
+                delete fullUser.password;
+                delete fullUser.resetPasswordToken;
+                delete fullUser.confirmationToken;
+                ctx.response.body = fullUser;
+            }
+        }
+    };
     return plugin;
 };
