@@ -44,13 +44,13 @@ export default factories.createCoreController('api::lesson.lesson', ({ strapi })
 
   async publishLesson(ctx: any) {
     const { documentId } = ctx.params;
-    const published = await strapi.documents('api::lesson.lesson').publish({ documentId });
+    const published = await (strapi.documents('api::lesson.lesson') as any).publish({ documentId });
     return { data: published };
   },
   
   async unpublishLesson(ctx: any) {
     const { documentId } = ctx.params;
-    const unpublished = await strapi.documents('api::lesson.lesson').unpublish({ documentId });
+    const unpublished = await (strapi.documents('api::lesson.lesson') as any).unpublish({ documentId });
     return { data: unpublished };
   }
 }));

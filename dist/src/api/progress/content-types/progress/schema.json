@@ -1,0 +1,50 @@
+{
+    "kind": "collectionType",
+    "collectionName": "progresses",
+    "info": {
+        "singularName": "progress",
+        "pluralName": "progresses",
+        "displayName": "Progress"
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "attributes": {
+        "completed": {
+            "type": "boolean",
+            "default": false
+        },
+        "status": {
+            "type": "enumeration",
+            "enum": [
+                "not_started",
+                "in_progress",
+                "completed"
+            ],
+            "default": "not_started"
+        },
+        "completionPercentage": {
+            "type": "decimal",
+            "default": 0
+        },
+        "completedAt": {
+            "type": "datetime"
+        },
+        "student": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "plugin::users-permissions.user"
+        },
+        "course": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::course.course",
+            "inversedBy": "progresses"
+        },
+        "lesson": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::lesson.lesson"
+        }
+    }
+}
