@@ -87,7 +87,10 @@ export default factories.createCoreController('api::progress.progress', ({ strap
 
     // 4. Recalculate Course Progress and Update Enrollment
     const totalLessons = await strapi.db.query('api::lesson.lesson').count({
-      where: { course: { id: courseId } }
+      where: { 
+        course: { id: courseId },
+        publishedAt: { $notNull: true }
+      }
     });
 
     const completedLessons = await strapi.db.query('api::progress.progress').count({
