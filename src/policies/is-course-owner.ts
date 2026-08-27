@@ -10,7 +10,7 @@ export default async (policyContext: any, config: any, { strapi }: any) => {
 
   if (roleType === 'admin_role' || roleType === 'content_manager') return true;
 
-  const { id } = policyContext.params;
+  const id = policyContext.params.id || policyContext.params.documentId;
   if (!id) return false;
 
   const entity = await strapi.documents(config.contentType).findOne({

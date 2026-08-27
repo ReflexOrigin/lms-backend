@@ -135,5 +135,50 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
   
   async update(ctx: any) {
     return ctx.forbidden('Quiz attempts cannot be modified once submitted.');
+  },
+
+  async find(ctx: any) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized();
+
+    const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: user.id },
+      populate: ['role']
+    });
+
+    if (fullUser?.role?.type === 'authenticated') {
+      ctx.query.filters = {
+        ...(ctx.query.filters || {}),
+        student: user.id,
+      };
+    }
+
+    return super.find(ctx);
+  },
+
+  async findOne(ctx: any) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized();
+
+    const response = await super.findOne(ctx);
+    if (!response || !response.data) return response;
+
+    const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: user.id },
+      populate: ['role']
+    });
+
+    if (fullUser?.role?.type === 'authenticated') {
+      const dbEntity = await strapi.db.query('api::quiz-attempt.quiz-attempt').findOne({
+        where: { documentId: ctx.params.id },
+        populate: ['student']
+      });
+
+      if (!dbEntity || !dbEntity.student || dbEntity.student.id !== user.id) {
+        return ctx.forbidden('You are not authorized to view this quiz attempt.');
+      }
+    }
+
+    return response;
   }
 }));

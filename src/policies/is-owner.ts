@@ -12,7 +12,7 @@ export default async (policyContext: any, config: any, { strapi }: any) => {
     return true;
   }
 
-  const { id } = policyContext.params;
+  const id = policyContext.params.id || policyContext.params.documentId;
   if (!id) return false;
 
   const contentType = config.contentType;

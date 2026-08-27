@@ -7,7 +7,7 @@
     "displayName": "Lesson"
   },
   "options": {
-    "draftAndPublish": false
+    "draftAndPublish": true
   },
   "attributes": {
     "title": {

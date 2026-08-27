@@ -1,4 +1,5 @@
 import { factories } from '@strapi/strapi';
+
 export default factories.createCoreController('api::enrollment.enrollment', ({ strapi }) => ({
   async create(ctx: any) {
     const user = ctx.state.user;
@@ -18,6 +19,51 @@ export default factories.createCoreController('api::enrollment.enrollment', ({ s
       });
     }
     
+    return response;
+  },
+
+  async find(ctx: any) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized();
+
+    const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: user.id },
+      populate: ['role']
+    });
+
+    if (fullUser?.role?.type === 'authenticated') {
+      ctx.query.filters = {
+        ...(ctx.query.filters || {}),
+        student: user.id,
+      };
+    }
+
+    return super.find(ctx);
+  },
+
+  async findOne(ctx: any) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized();
+
+    const response = await super.findOne(ctx);
+    if (!response || !response.data) return response;
+
+    const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: user.id },
+      populate: ['role']
+    });
+
+    if (fullUser?.role?.type === 'authenticated') {
+      const dbEntity = await strapi.db.query('api::enrollment.enrollment').findOne({
+        where: { documentId: ctx.params.id },
+        populate: ['student']
+      });
+
+      if (!dbEntity || !dbEntity.student || dbEntity.student.id !== user.id) {
+        return ctx.forbidden('You are not authorized to view this enrollment.');
+      }
+    }
+
     return response;
   }
 }));
