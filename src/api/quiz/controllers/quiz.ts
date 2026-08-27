@@ -3,15 +3,20 @@ import { factories } from '@strapi/strapi';
 export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => ({
   async find(ctx: any) {
     const user = ctx.state.user;
-    if (user && user.role) {
-      if (user.role.type === 'instructor' && ctx.query.instructorView === 'true') {
+    if (user) {
+      const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { id: user.id },
+        populate: ['role']
+      });
+      
+      if (fullUser?.role?.type === 'instructor' && ctx.query.instructorView === 'true') {
         const query = { ...ctx.query };
         delete query.instructorView;
         
         const quizzes = await strapi.documents('api::quiz.quiz').findMany({
           filters: {
             ...(query.filters as object || {}),
-            course: { instructor: { documentId: user.documentId } }
+            course: { instructor: { documentId: fullUser.documentId } }
           },
           populate: query.populate as any,
           status: 'draft'
@@ -19,9 +24,57 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
         
         const sanitized = await this.sanitizeOutput!(quizzes, ctx);
         return { data: sanitized, meta: {} };
+      } else if (fullUser?.role?.type === 'student' || fullUser?.role?.type === 'authenticated') {
+        const enrollments = await strapi.db.query('api::enrollment.enrollment').findMany({
+          where: { student: user.id },
+          populate: ['course']
+        });
+        
+        const enrolledCourseIds = enrollments.map((e: any) => e.course?.id).filter(Boolean);
+        
+        if (enrolledCourseIds.length === 0) {
+          return { data: [], meta: { pagination: { page: 1, pageSize: 25, pageCount: 0, total: 0 } } };
+        }
+        
+        ctx.query.filters = {
+          ...(ctx.query.filters as object || {}),
+          course: { id: { $in: enrolledCourseIds } }
+        };
       }
     }
     return super.find(ctx);
+  },
+
+  async findOne(ctx: any) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized();
+    
+    const response = await super.findOne(ctx);
+    if (!response || !response.data) return response;
+
+    const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: user.id },
+      populate: ['role']
+    });
+
+    if (fullUser?.role?.type === 'student' || fullUser?.role?.type === 'authenticated') {
+      const quiz = await strapi.documents('api::quiz.quiz').findOne({
+        documentId: ctx.params.id,
+        populate: ['course']
+      });
+      
+      if (quiz && (quiz as any).course) {
+        const enrollment = await strapi.db.query('api::enrollment.enrollment').findOne({
+          where: { student: user.id, course: (quiz as any).course.id }
+        });
+        if (!enrollment) {
+          return ctx.forbidden('You are not enrolled in the course for this quiz.');
+        }
+      } else if (!quiz) {
+         return ctx.notFound();
+      }
+    }
+    return response;
   },
 
   async create(ctx: any) {
