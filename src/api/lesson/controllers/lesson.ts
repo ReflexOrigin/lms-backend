@@ -38,8 +38,67 @@ export default factories.createCoreController('api::lesson.lesson', ({ strapi })
         return ctx.forbidden('You can only add lessons to your own courses.');
       }
     }
+
+    if (courseId) {
+      const requestedOrder = ctx.request.body?.data?.order;
+      const courseEntity = await strapi.db.query('api::course.course').findOne({
+        where: { documentId: courseId },
+        select: ['id']
+      });
+      
+      if (courseEntity) {
+        const existingLessons = await strapi.db.query('api::lesson.lesson').findMany({
+          where: { course: courseEntity.id },
+          select: ['order']
+        });
+        
+        const takenOrders = new Set(existingLessons.map(l => l.order));
+        
+        if (requestedOrder === undefined || requestedOrder === null || takenOrders.has(Number(requestedOrder))) {
+          let nextOrder = 0;
+          if (existingLessons.length > 0) {
+            nextOrder = Math.max(...existingLessons.map(l => l.order || 0)) + 1;
+          }
+          if (!ctx.request.body.data) ctx.request.body.data = {};
+          ctx.request.body.data.order = nextOrder;
+        }
+      }
+    }
     
     return super.create(ctx);
+  },
+
+  async update(ctx: any) {
+    const requestedOrder = ctx.request.body?.data?.order;
+    const documentId = ctx.params.id; // Strapi v5 uses documentId in route params
+
+    if (requestedOrder !== undefined && requestedOrder !== null) {
+      const currentLesson = await strapi.db.query('api::lesson.lesson').findOne({
+        where: { documentId },
+        populate: ['course']
+      });
+
+      if (currentLesson && currentLesson.course) {
+        const existingLessons = await strapi.db.query('api::lesson.lesson').findMany({
+          where: { 
+            course: currentLesson.course.id,
+            id: { $ne: currentLesson.id }
+          },
+          select: ['order']
+        });
+        
+        const takenOrders = new Set(existingLessons.map(l => l.order));
+        if (takenOrders.has(Number(requestedOrder))) {
+          let nextOrder = 0;
+          if (existingLessons.length > 0) {
+            nextOrder = Math.max(...existingLessons.map(l => l.order || 0)) + 1;
+          }
+          ctx.request.body.data.order = nextOrder;
+        }
+      }
+    }
+
+    return super.update(ctx);
   },
 
   async publishLesson(ctx: any) {
