@@ -22,5 +22,34 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
       }
     }
     return super.find(ctx);
+  },
+
+  async create(ctx: any) {
+    const user = ctx.state.user;
+    
+    // Check if the user is an instructor
+    if (user && user.role?.type === 'instructor') {
+      const courseId = ctx.request.body?.data?.course;
+      
+      if (!courseId) {
+        return ctx.badRequest('A course must be specified when creating a quiz');
+      }
+      
+      // Verify the instructor owns this course
+      const course = await strapi.documents('api::course.course').findOne({
+        documentId: courseId,
+        populate: ['instructor']
+      });
+      
+      if (!course) {
+        return ctx.badRequest('Course not found');
+      }
+      
+      if (course.instructor?.documentId !== user.documentId) {
+        return ctx.unauthorized('You can only create quizzes for your own courses');
+      }
+    }
+    
+    return super.create(ctx);
   }
 }));
