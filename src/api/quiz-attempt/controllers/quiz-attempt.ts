@@ -121,13 +121,8 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
       attemptedAt: new Date().toISOString()
     };
 
-    const response = await super.create({
-      ...ctx,
-      request: {
-        ...ctx.request,
-        body: { data: attemptData }
-      }
-    });
+    ctx.request.body = { data: attemptData };
+    const response = await super.create(ctx);
 
     // Attach feedback to the returned payload safely (doesn't save to DB field if not in schema, but returned in API)
     if (response?.data) {

@@ -45,7 +45,7 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
         return ctx.badRequest('Course not found');
       }
       
-      if (course.instructor?.documentId !== user.documentId) {
+      if ((course as any).instructor?.id !== user.id) {
         return ctx.unauthorized('You can only create quizzes for your own courses');
       }
     }

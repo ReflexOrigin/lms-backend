@@ -39,7 +39,7 @@ export default factories.createCoreController('api::enrollment.enrollment', ({ s
     } else if (fullUser?.role?.type === 'instructor') {
       ctx.query.filters = {
         ...(ctx.query.filters || {}),
-        course: { instructor: { documentId: user.documentId } }
+        course: { instructor: { documentId: fullUser.documentId } }
       };
     }
 
@@ -72,7 +72,7 @@ export default factories.createCoreController('api::enrollment.enrollment', ({ s
         documentId: ctx.params.id,
         populate: { course: { populate: ['instructor'] } }
       });
-      if (!dbEntity || !dbEntity.course || (dbEntity.course as any).instructor?.documentId !== user.documentId) {
+      if (!dbEntity || !dbEntity.course || (dbEntity.course as any).instructor?.documentId !== fullUser.documentId) {
         return ctx.forbidden('You are not authorized to view this enrollment.');
       }
     }

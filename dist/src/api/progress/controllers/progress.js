@@ -99,7 +99,7 @@ exports.default = strapi_1.factories.createCoreController('api::progress.progres
         return ctx.badRequest('Use POST /progresses for idempotent upsert.');
     },
     async find(ctx) {
-        var _a, _b;
+        var _a, _b, _c, _d, _e, _f;
         const user = ctx.state.user;
         if (!user)
             return ctx.unauthorized();
@@ -120,20 +120,30 @@ exports.default = strapi_1.factories.createCoreController('api::progress.progres
                 courseIdFilter = f.course.documentId[0];
             }
         }
-        const where = {
-            student: user.id
-        };
+        const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+            where: { id: user.id },
+            populate: ['role']
+        });
+        const where = {};
+        if (((_c = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _c === void 0 ? void 0 : _c.type) === 'student' || ((_d = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _d === void 0 ? void 0 : _d.type) === 'authenticated') {
+            where.student = user.id;
+        }
+        else if (((_e = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _e === void 0 ? void 0 : _e.type) === 'instructor') {
+            where.course = { instructor: user.id };
+        }
         if (courseIdFilter) {
-            // db.query nested relation filters on string documentIds fail silently in some v5 contexts.
-            // Resolving the numeric ID directly guarantees a perfect match.
+            const courseWhere = { documentId: courseIdFilter };
+            if (((_f = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _f === void 0 ? void 0 : _f.type) === 'instructor') {
+                courseWhere.instructor = user.id;
+            }
             const courseMatch = await strapi.db.query('api::course.course').findOne({
-                where: { documentId: courseIdFilter }
+                where: courseWhere
             });
             if (courseMatch) {
                 where.course = courseMatch.id;
             }
             else {
-                // Force no results if course not found
+                // Force no results if course not found or not owned by instructor
                 where.course = 0;
             }
         }

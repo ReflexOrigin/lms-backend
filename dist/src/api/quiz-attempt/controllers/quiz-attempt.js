@@ -8,6 +8,9 @@ exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.qui
         if (!user) {
             return ctx.unauthorized('You must be logged in to take a quiz.');
         }
+        const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+            where: { id: user.id }
+        });
         const { data } = ctx.request.body;
         if (!data.quiz) {
             return ctx.badRequest('Quiz ID is required');
@@ -38,7 +41,7 @@ exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.qui
         const maxAttempts = quiz.maxAttempts || 1;
         const existingAttempts = await strapi.documents('api::quiz-attempt.quiz-attempt').findMany({
             filters: {
-                student: user.documentId,
+                student: fullUser.documentId,
                 quiz: quiz.documentId
             }
         });
@@ -91,20 +94,15 @@ exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.qui
         const percentage = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
         const attemptData = {
             quiz: quizId,
-            student: user.documentId,
+            student: fullUser.documentId,
             answers: submittedAnswers,
             score,
             totalQuestions,
             percentage,
             attemptedAt: new Date().toISOString()
         };
-        const response = await super.create({
-            ...ctx,
-            request: {
-                ...ctx.request,
-                body: { data: attemptData }
-            }
-        });
+        ctx.request.body = { data: attemptData };
+        const response = await super.create(ctx);
         // Attach feedback to the returned payload safely (doesn't save to DB field if not in schema, but returned in API)
         if (response === null || response === void 0 ? void 0 : response.data) {
             response.data.feedback = gradedFeedback;

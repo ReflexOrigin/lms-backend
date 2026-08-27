@@ -34,7 +34,7 @@ export default factories.createCoreController('api::lesson.lesson', ({ strapi })
         documentId: courseId,
         populate: ['instructor']
       });
-      if (!course || (course as any).instructor?.documentId !== user.documentId) {
+      if (!course || (course as any).instructor?.id !== user.id) {
         return ctx.forbidden('You can only add lessons to your own courses.');
       }
     }

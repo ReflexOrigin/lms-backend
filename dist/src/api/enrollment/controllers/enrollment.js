@@ -21,7 +21,7 @@ exports.default = strapi_1.factories.createCoreController('api::enrollment.enrol
         return response;
     },
     async find(ctx) {
-        var _a;
+        var _a, _b, _c;
         const user = ctx.state.user;
         if (!user)
             return ctx.unauthorized();
@@ -29,16 +29,22 @@ exports.default = strapi_1.factories.createCoreController('api::enrollment.enrol
             where: { id: user.id },
             populate: ['role']
         });
-        if (((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'authenticated') {
+        if (((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'student' || ((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'authenticated') {
             ctx.query.filters = {
                 ...(ctx.query.filters || {}),
                 student: user.id,
             };
         }
+        else if (((_c = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _c === void 0 ? void 0 : _c.type) === 'instructor') {
+            ctx.query.filters = {
+                ...(ctx.query.filters || {}),
+                course: { instructor: { documentId: fullUser.documentId } }
+            };
+        }
         return super.find(ctx);
     },
     async findOne(ctx) {
-        var _a;
+        var _a, _b, _c, _d;
         const user = ctx.state.user;
         if (!user)
             return ctx.unauthorized();
@@ -49,12 +55,21 @@ exports.default = strapi_1.factories.createCoreController('api::enrollment.enrol
             where: { id: user.id },
             populate: ['role']
         });
-        if (((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'authenticated') {
+        if (((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'student' || ((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'authenticated') {
             const dbEntity = await strapi.db.query('api::enrollment.enrollment').findOne({
                 where: { documentId: ctx.params.id },
                 populate: ['student']
             });
             if (!dbEntity || !dbEntity.student || dbEntity.student.id !== user.id) {
+                return ctx.forbidden('You are not authorized to view this enrollment.');
+            }
+        }
+        else if (((_c = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _c === void 0 ? void 0 : _c.type) === 'instructor') {
+            const dbEntity = await strapi.documents('api::enrollment.enrollment').findOne({
+                documentId: ctx.params.id,
+                populate: { course: { populate: ['instructor'] } }
+            });
+            if (!dbEntity || !dbEntity.course || ((_d = dbEntity.course.instructor) === null || _d === void 0 ? void 0 : _d.documentId) !== fullUser.documentId) {
                 return ctx.forbidden('You are not authorized to view this enrollment.');
             }
         }
