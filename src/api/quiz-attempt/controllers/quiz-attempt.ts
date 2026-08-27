@@ -9,6 +9,10 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
       return ctx.unauthorized('You must be logged in to take a quiz.');
     }
 
+    const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+      where: { id: user.id }
+    });
+
     const { data } = ctx.request.body;
     
     if (!data.quiz) {
@@ -45,7 +49,7 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
     const maxAttempts = (quiz as any).maxAttempts || 1;
     const existingAttempts = await strapi.documents('api::quiz-attempt.quiz-attempt').findMany({
       filters: {
-        student: user.documentId,
+        student: fullUser.documentId,
         quiz: quiz.documentId
       } as any
     });
@@ -109,7 +113,7 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
 
     const attemptData = {
       quiz: quizId,
-      student: user.documentId,
+      student: fullUser.documentId,
       answers: submittedAnswers,
       score,
       totalQuestions,
