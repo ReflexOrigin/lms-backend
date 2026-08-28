@@ -4,22 +4,42 @@ export default factories.createCoreController('api::course.course', ({ strapi })
     const user = ctx.state.user;
     console.log('GET /courses query:', JSON.stringify(ctx.query));
     if (user && user.role) {
-      if (user.role.type === 'instructor' && ctx.query.instructorView === 'true') {
+      if ((user.role.type === 'instructor' || user.role.type === 'content_manager' || user.role.type === 'admin_role') && ctx.query.managerView === 'true') {
         const query = { ...ctx.query };
-        delete query.instructorView;
+        delete query.managerView;
         
-        // Use document service to bypass REST API draft permissions for instructors
-        const filters = {
-          ...(query.filters as object || {}),
-          instructor: { documentId: user.documentId }
+        // Use document service to bypass REST API draft permissions
+        const filters: any = {
+          ...(query.filters as object || {})
         };
-        console.log('Instructor course findMany filters:', JSON.stringify(filters, null, 2));
         
-        const courses = await strapi.documents('api::course.course').findMany({
+        // Ensure instructors can only see their own courses
+        if (user.role.type === 'instructor') {
+          filters.instructor = { documentId: user.documentId };
+        }
+        
+        console.log('Manager course findMany filters:', JSON.stringify(filters, null, 2));
+        
+        const draftCourses = await strapi.documents('api::course.course').findMany({
           filters,
           populate: query.populate as any,
           status: 'draft'
         });
+        
+        const pubCourses = await strapi.documents('api::course.course').findMany({
+          filters,
+          status: 'published'
+        });
+        
+        const pubMap = new Map(pubCourses.map((c: any) => [c.documentId, c.publishedAt]));
+        
+        for (const c of draftCourses) {
+          if (pubMap.has(c.documentId)) {
+            c.publishedAt = pubMap.get(c.documentId);
+          }
+        }
+        
+        const courses = draftCourses;
         
         console.log('Found courses count:', courses.length);
         

@@ -3,28 +3,42 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strapi_1 = require("@strapi/strapi");
 exports.default = strapi_1.factories.createCoreController('api::quiz.quiz', ({ strapi }) => ({
     async find(ctx) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d, _e;
         const user = ctx.state.user;
         if (user) {
             const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
                 where: { id: user.id },
                 populate: ['role']
             });
-            if (((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'instructor' && ctx.query.instructorView === 'true') {
+            if ((((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'instructor' || ((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'content_manager' || ((_c = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _c === void 0 ? void 0 : _c.type) === 'admin_role') && ctx.query.managerView === 'true') {
                 const query = { ...ctx.query };
-                delete query.instructorView;
-                const quizzes = await strapi.documents('api::quiz.quiz').findMany({
-                    filters: {
-                        ...(query.filters || {}),
-                        course: { instructor: { documentId: fullUser.documentId } }
-                    },
+                delete query.managerView;
+                const filters = {
+                    ...(query.filters || {})
+                };
+                if (fullUser.role.type === 'instructor') {
+                    filters.course = { instructor: { documentId: fullUser.documentId } };
+                }
+                const draftQuizzes = await strapi.documents('api::quiz.quiz').findMany({
+                    filters,
                     populate: query.populate,
                     status: 'draft'
                 });
+                const pubQuizzes = await strapi.documents('api::quiz.quiz').findMany({
+                    filters,
+                    status: 'published'
+                });
+                const pubMap = new Map(pubQuizzes.map((q) => [q.documentId, q.publishedAt]));
+                for (const q of draftQuizzes) {
+                    if (pubMap.has(q.documentId)) {
+                        q.publishedAt = pubMap.get(q.documentId);
+                    }
+                }
+                const quizzes = draftQuizzes;
                 const sanitized = await this.sanitizeOutput(quizzes, ctx);
                 return { data: sanitized, meta: {} };
             }
-            else if (((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'student' || ((_c = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _c === void 0 ? void 0 : _c.type) === 'authenticated') {
+            else if (((_d = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _d === void 0 ? void 0 : _d.type) === 'student' || ((_e = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _e === void 0 ? void 0 : _e.type) === 'authenticated') {
                 const enrollments = await strapi.db.query('api::enrollment.enrollment').findMany({
                     where: { student: user.id },
                     populate: ['course']

@@ -36,9 +36,14 @@ exports.default = strapi_1.factories.createCoreController('api::enrollment.enrol
             };
         }
         else if (((_c = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _c === void 0 ? void 0 : _c.type) === 'instructor') {
+            const instructorCourses = await strapi.db.query('api::course.course').findMany({
+                where: { instructor: user.id },
+                select: ['id', 'documentId']
+            });
+            const courseIds = instructorCourses.map((c) => c.documentId);
             ctx.query.filters = {
                 ...(ctx.query.filters || {}),
-                course: { instructor: { documentId: fullUser.documentId } }
+                course: { documentId: { $in: courseIds.length > 0 ? courseIds : ['none'] } }
             };
         }
         return super.find(ctx);

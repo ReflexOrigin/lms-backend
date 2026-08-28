@@ -5,17 +5,32 @@ exports.default = strapi_1.factories.createCoreController('api::lesson.lesson', 
     async find(ctx) {
         const user = ctx.state.user;
         if (user && user.role) {
-            if (user.role.type === 'instructor' && ctx.query.instructorView === 'true') {
+            if ((user.role.type === 'instructor' || user.role.type === 'content_manager' || user.role.type === 'admin_role') && ctx.query.managerView === 'true') {
                 const query = { ...ctx.query };
-                delete query.instructorView;
-                const lessons = await strapi.documents('api::lesson.lesson').findMany({
-                    filters: {
-                        ...(query.filters || {}),
-                        course: { instructor: { documentId: user.documentId } }
-                    },
+                delete query.managerView;
+                const filters = {
+                    ...(query.filters || {})
+                };
+                // Instructors can only see lessons for their own courses
+                if (user.role.type === 'instructor') {
+                    filters.course = { instructor: { documentId: user.documentId } };
+                }
+                const draftLessons = await strapi.documents('api::lesson.lesson').findMany({
+                    filters,
                     populate: query.populate,
                     status: 'draft'
                 });
+                const pubLessons = await strapi.documents('api::lesson.lesson').findMany({
+                    filters,
+                    status: 'published'
+                });
+                const pubMap = new Map(pubLessons.map((l) => [l.documentId, l.publishedAt]));
+                for (const l of draftLessons) {
+                    if (pubMap.has(l.documentId)) {
+                        l.publishedAt = pubMap.get(l.documentId);
+                    }
+                }
+                const lessons = draftLessons;
                 const sanitized = await this.sanitizeOutput(lessons, ctx);
                 return { data: sanitized, meta: {} };
             }

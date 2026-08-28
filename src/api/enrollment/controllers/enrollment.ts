@@ -33,13 +33,19 @@ export default factories.createCoreController('api::enrollment.enrollment', ({ s
 
     if (fullUser?.role?.type === 'student' || fullUser?.role?.type === 'authenticated') {
       ctx.query.filters = {
-        ...(ctx.query.filters || {}),
+        ...(ctx.query.filters as object || {}),
         student: user.id,
       };
     } else if (fullUser?.role?.type === 'instructor') {
+      const instructorCourses = await strapi.db.query('api::course.course').findMany({
+        where: { instructor: user.id },
+        select: ['id', 'documentId']
+      });
+      const courseIds = instructorCourses.map((c: any) => c.documentId);
+      
       ctx.query.filters = {
-        ...(ctx.query.filters || {}),
-        course: { instructor: { documentId: fullUser.documentId } }
+        ...(ctx.query.filters as object || {}),
+        course: { documentId: { $in: courseIds.length > 0 ? courseIds : ['none'] } }
       };
     }
 

@@ -151,13 +151,21 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
         student: user.id,
       };
     } else if (fullUser?.role?.type === 'instructor') {
+      const instructorCourses = await strapi.db.query('api::course.course').findMany({
+        where: { instructor: user.id },
+        select: ['id', 'documentId']
+      });
+      const courseIds = instructorCourses.map((c: any) => c.documentId);
+      
+      const quizzes = await strapi.db.query('api::quiz.quiz').findMany({
+        where: { course: { documentId: { $in: courseIds } } },
+        select: ['id', 'documentId']
+      });
+      const quizIds = quizzes.map((q: any) => q.documentId);
+
       ctx.query.filters = {
         ...(ctx.query.filters as object || {}),
-        quiz: {
-          course: {
-            instructor: { id: user.id }
-          }
-        }
+        quiz: { documentId: { $in: quizIds.length > 0 ? quizIds : ['none'] } }
       };
     }
 
@@ -188,18 +196,19 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
     } else if (fullUser?.role?.type === 'instructor') {
       const dbEntity = await strapi.db.query('api::quiz-attempt.quiz-attempt').findOne({
         where: { documentId: ctx.params.id },
-        populate: {
-          quiz: {
-            populate: {
-              course: {
-                populate: ['instructor']
-              }
-            }
-          }
-        }
+        populate: ['quiz']
       });
       
-      const course = (dbEntity as any)?.quiz?.course;
+      if (!dbEntity || !dbEntity.quiz) {
+        return ctx.forbidden('You are not authorized to view this quiz attempt.');
+      }
+      
+      const quizWithCourse = await strapi.db.query('api::quiz.quiz').findOne({
+        where: { documentId: (dbEntity.quiz as any).documentId },
+        populate: { course: { populate: ['instructor'] } }
+      });
+      
+      const course = (quizWithCourse as any)?.course;
       if (!course || !course.instructor || course.instructor.id !== user.id) {
         return ctx.forbidden('You are not authorized to view this quiz attempt.');
       }

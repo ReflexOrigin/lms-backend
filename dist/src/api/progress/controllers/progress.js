@@ -132,7 +132,12 @@ exports.default = strapi_1.factories.createCoreController('api::progress.progres
             where.student = user.id;
         }
         else if (((_e = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _e === void 0 ? void 0 : _e.type) === 'instructor') {
-            where.course = { instructor: user.id };
+            const instructorCourses = await strapi.db.query('api::course.course').findMany({
+                where: { instructor: user.id },
+                select: ['id']
+            });
+            const courseIds = instructorCourses.map((c) => c.id);
+            where.course = { id: { $in: courseIds.length > 0 ? courseIds : [-1] } };
         }
         if (courseIdFilter) {
             const courseWhere = { documentId: courseIdFilter };

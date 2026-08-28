@@ -131,7 +131,7 @@ const PERMISSION_MAP = {
         'api::progress.progress': ['find', 'findOne'],
         'api::blog-post.blog-post': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::quiz-attempt.quiz-attempt': ['find', 'findOne', 'delete'],
-        'api::admin-custom.admin-custom': ['getStats', 'getUsers', 'updateUserRole', 'deleteUser'],
+        'api::admin-custom.admin-custom': ['getStats', 'getUsers', 'updateUserRole', 'deleteUser', 'suspendUser'],
     },
 };
 const PLUGIN_PERMISSION_MAP = {

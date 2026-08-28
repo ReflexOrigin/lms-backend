@@ -144,7 +144,12 @@ export default factories.createCoreController('api::progress.progress', ({ strap
     if (fullUser?.role?.type === 'student' || fullUser?.role?.type === 'authenticated') {
       where.student = user.id;
     } else if (fullUser?.role?.type === 'instructor') {
-      where.course = { instructor: user.id };
+      const instructorCourses = await strapi.db.query('api::course.course').findMany({
+        where: { instructor: user.id },
+        select: ['id']
+      });
+      const courseIds = instructorCourses.map((c: any) => c.id);
+      where.course = { id: { $in: courseIds.length > 0 ? courseIds : [-1] } };
     }
 
     if (courseIdFilter) {

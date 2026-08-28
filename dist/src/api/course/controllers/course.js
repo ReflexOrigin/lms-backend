@@ -6,20 +6,34 @@ exports.default = strapi_1.factories.createCoreController('api::course.course', 
         const user = ctx.state.user;
         console.log('GET /courses query:', JSON.stringify(ctx.query));
         if (user && user.role) {
-            if (user.role.type === 'instructor' && ctx.query.instructorView === 'true') {
+            if ((user.role.type === 'instructor' || user.role.type === 'content_manager' || user.role.type === 'admin_role') && ctx.query.managerView === 'true') {
                 const query = { ...ctx.query };
-                delete query.instructorView;
-                // Use document service to bypass REST API draft permissions for instructors
+                delete query.managerView;
+                // Use document service to bypass REST API draft permissions
                 const filters = {
-                    ...(query.filters || {}),
-                    instructor: { documentId: user.documentId }
+                    ...(query.filters || {})
                 };
-                console.log('Instructor course findMany filters:', JSON.stringify(filters, null, 2));
-                const courses = await strapi.documents('api::course.course').findMany({
+                // Ensure instructors can only see their own courses
+                if (user.role.type === 'instructor') {
+                    filters.instructor = { documentId: user.documentId };
+                }
+                console.log('Manager course findMany filters:', JSON.stringify(filters, null, 2));
+                const draftCourses = await strapi.documents('api::course.course').findMany({
                     filters,
                     populate: query.populate,
                     status: 'draft'
                 });
+                const pubCourses = await strapi.documents('api::course.course').findMany({
+                    filters,
+                    status: 'published'
+                });
+                const pubMap = new Map(pubCourses.map((c) => [c.documentId, c.publishedAt]));
+                for (const c of draftCourses) {
+                    if (pubMap.has(c.documentId)) {
+                        c.publishedAt = pubMap.get(c.documentId);
+                    }
+                }
+                const courses = draftCourses;
                 console.log('Found courses count:', courses.length);
                 const sanitized = await this.sanitizeOutput(courses, ctx);
                 if (Array.isArray(sanitized)) {

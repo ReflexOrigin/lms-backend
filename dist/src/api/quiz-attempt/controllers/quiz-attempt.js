@@ -128,19 +128,25 @@ exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.qui
             };
         }
         else if (((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'instructor') {
+            const instructorCourses = await strapi.db.query('api::course.course').findMany({
+                where: { instructor: user.id },
+                select: ['id', 'documentId']
+            });
+            const courseIds = instructorCourses.map((c) => c.documentId);
+            const quizzes = await strapi.db.query('api::quiz.quiz').findMany({
+                where: { course: { documentId: { $in: courseIds } } },
+                select: ['id', 'documentId']
+            });
+            const quizIds = quizzes.map((q) => q.documentId);
             ctx.query.filters = {
                 ...(ctx.query.filters || {}),
-                quiz: {
-                    course: {
-                        instructor: { id: user.id }
-                    }
-                }
+                quiz: { documentId: { $in: quizIds.length > 0 ? quizIds : ['none'] } }
             };
         }
         return super.find(ctx);
     },
     async findOne(ctx) {
-        var _a, _b, _c;
+        var _a, _b;
         const user = ctx.state.user;
         if (!user)
             return ctx.unauthorized();
@@ -163,17 +169,16 @@ exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.qui
         else if (((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'instructor') {
             const dbEntity = await strapi.db.query('api::quiz-attempt.quiz-attempt').findOne({
                 where: { documentId: ctx.params.id },
-                populate: {
-                    quiz: {
-                        populate: {
-                            course: {
-                                populate: ['instructor']
-                            }
-                        }
-                    }
-                }
+                populate: ['quiz']
             });
-            const course = (_c = dbEntity === null || dbEntity === void 0 ? void 0 : dbEntity.quiz) === null || _c === void 0 ? void 0 : _c.course;
+            if (!dbEntity || !dbEntity.quiz) {
+                return ctx.forbidden('You are not authorized to view this quiz attempt.');
+            }
+            const quizWithCourse = await strapi.db.query('api::quiz.quiz').findOne({
+                where: { documentId: dbEntity.quiz.documentId },
+                populate: { course: { populate: ['instructor'] } }
+            });
+            const course = quizWithCourse === null || quizWithCourse === void 0 ? void 0 : quizWithCourse.course;
             if (!course || !course.instructor || course.instructor.id !== user.id) {
                 return ctx.forbidden('You are not authorized to view this quiz attempt.');
             }

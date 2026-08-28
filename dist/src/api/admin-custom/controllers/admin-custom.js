@@ -80,5 +80,33 @@ exports.default = {
             where: { documentId: id }
         });
         return { data: { success: true } };
+    },
+    async suspendUser(ctx) {
+        var _a;
+        const user = ctx.state.user;
+        if (!user || ((_a = user.role) === null || _a === void 0 ? void 0 : _a.type) !== 'admin_role') {
+            return ctx.unauthorized('Only admins can suspend users');
+        }
+        const { id } = ctx.params;
+        const { blocked } = ctx.request.body.data || {};
+        if (typeof blocked !== 'boolean') {
+            return ctx.badRequest('blocked (boolean) is required');
+        }
+        // Prevent self-suspension
+        if (user.documentId === id) {
+            return ctx.badRequest('You cannot suspend yourself');
+        }
+        const targetUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+            where: { documentId: id }
+        });
+        if (!targetUser) {
+            return ctx.notFound('User not found');
+        }
+        const updatedUser = await strapi.db.query('plugin::users-permissions.user').update({
+            where: { documentId: id },
+            data: { blocked },
+            populate: ['role']
+        });
+        return { data: updatedUser };
     }
 };

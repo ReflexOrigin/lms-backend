@@ -4,18 +4,39 @@ export default factories.createCoreController('api::lesson.lesson', ({ strapi })
   async find(ctx: any) {
     const user = ctx.state.user;
     if (user && user.role) {
-      if (user.role.type === 'instructor' && ctx.query.instructorView === 'true') {
+      if ((user.role.type === 'instructor' || user.role.type === 'content_manager' || user.role.type === 'admin_role') && ctx.query.managerView === 'true') {
         const query = { ...ctx.query };
-        delete query.instructorView;
+        delete query.managerView;
         
-        const lessons = await strapi.documents('api::lesson.lesson').findMany({
-          filters: {
-            ...(query.filters as object || {}),
-            course: { instructor: { documentId: user.documentId } }
-          },
+        const filters: any = {
+          ...(query.filters as object || {})
+        };
+        
+        // Instructors can only see lessons for their own courses
+        if (user.role.type === 'instructor') {
+          filters.course = { instructor: { documentId: user.documentId } };
+        }
+        
+        const draftLessons = await strapi.documents('api::lesson.lesson').findMany({
+          filters,
           populate: query.populate as any,
           status: 'draft'
         });
+        
+        const pubLessons = await strapi.documents('api::lesson.lesson').findMany({
+          filters,
+          status: 'published'
+        });
+        
+        const pubMap = new Map(pubLessons.map((l: any) => [l.documentId, l.publishedAt]));
+        
+        for (const l of draftLessons) {
+          if (pubMap.has(l.documentId)) {
+            l.publishedAt = pubMap.get(l.documentId);
+          }
+        }
+        
+        const lessons = draftLessons;
         
         const sanitized = await this.sanitizeOutput!(lessons, ctx);
         return { data: sanitized, meta: {} };

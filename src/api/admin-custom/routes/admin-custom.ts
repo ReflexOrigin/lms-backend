@@ -16,6 +16,11 @@ export default {
       handler: 'admin-custom.updateUserRole',
     },
     {
+      method: 'PUT',
+      path: '/admin-custom/users/:id/suspend',
+      handler: 'admin-custom.suspendUser',
+    },
+    {
       method: 'DELETE',
       path: '/admin-custom/users/:id',
       handler: 'admin-custom.deleteUser',

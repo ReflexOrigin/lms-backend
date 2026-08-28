@@ -9,18 +9,38 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
         populate: ['role']
       });
       
-      if (fullUser?.role?.type === 'instructor' && ctx.query.instructorView === 'true') {
+      if ((fullUser?.role?.type === 'instructor' || fullUser?.role?.type === 'content_manager' || fullUser?.role?.type === 'admin_role') && ctx.query.managerView === 'true') {
         const query = { ...ctx.query };
-        delete query.instructorView;
+        delete query.managerView;
         
-        const quizzes = await strapi.documents('api::quiz.quiz').findMany({
-          filters: {
-            ...(query.filters as object || {}),
-            course: { instructor: { documentId: fullUser.documentId } }
-          },
+        const filters: any = {
+          ...(query.filters as object || {})
+        };
+        
+        if (fullUser.role.type === 'instructor') {
+          filters.course = { instructor: { documentId: fullUser.documentId } };
+        }
+        
+        const draftQuizzes = await strapi.documents('api::quiz.quiz').findMany({
+          filters,
           populate: query.populate as any,
           status: 'draft'
         });
+        
+        const pubQuizzes = await strapi.documents('api::quiz.quiz').findMany({
+          filters,
+          status: 'published'
+        });
+        
+        const pubMap = new Map(pubQuizzes.map((q: any) => [q.documentId, q.publishedAt]));
+        
+        for (const q of draftQuizzes) {
+          if (pubMap.has(q.documentId)) {
+            q.publishedAt = pubMap.get(q.documentId);
+          }
+        }
+        
+        const quizzes = draftQuizzes;
         
         const sanitized = await this.sanitizeOutput!(quizzes, ctx);
         return { data: sanitized, meta: {} };
