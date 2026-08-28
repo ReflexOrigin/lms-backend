@@ -113,7 +113,7 @@ exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.qui
         return ctx.forbidden('Quiz attempts cannot be modified once submitted.');
     },
     async find(ctx) {
-        var _a;
+        var _a, _b;
         const user = ctx.state.user;
         if (!user)
             return ctx.unauthorized();
@@ -127,10 +127,20 @@ exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.qui
                 student: user.id,
             };
         }
+        else if (((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'instructor') {
+            ctx.query.filters = {
+                ...(ctx.query.filters || {}),
+                quiz: {
+                    course: {
+                        instructor: { id: user.id }
+                    }
+                }
+            };
+        }
         return super.find(ctx);
     },
     async findOne(ctx) {
-        var _a;
+        var _a, _b, _c;
         const user = ctx.state.user;
         if (!user)
             return ctx.unauthorized();
@@ -147,6 +157,24 @@ exports.default = strapi_1.factories.createCoreController('api::quiz-attempt.qui
                 populate: ['student']
             });
             if (!dbEntity || !dbEntity.student || dbEntity.student.id !== user.id) {
+                return ctx.forbidden('You are not authorized to view this quiz attempt.');
+            }
+        }
+        else if (((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'instructor') {
+            const dbEntity = await strapi.db.query('api::quiz-attempt.quiz-attempt').findOne({
+                where: { documentId: ctx.params.id },
+                populate: {
+                    quiz: {
+                        populate: {
+                            course: {
+                                populate: ['instructor']
+                            }
+                        }
+                    }
+                }
+            });
+            const course = (_c = dbEntity === null || dbEntity === void 0 ? void 0 : dbEntity.quiz) === null || _c === void 0 ? void 0 : _c.course;
+            if (!course || !course.instructor || course.instructor.id !== user.id) {
                 return ctx.forbidden('You are not authorized to view this quiz attempt.');
             }
         }

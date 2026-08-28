@@ -147,8 +147,17 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
 
     if (fullUser?.role?.type === 'authenticated') {
       ctx.query.filters = {
-        ...(ctx.query.filters || {}),
+        ...(ctx.query.filters as object || {}),
         student: user.id,
+      };
+    } else if (fullUser?.role?.type === 'instructor') {
+      ctx.query.filters = {
+        ...(ctx.query.filters as object || {}),
+        quiz: {
+          course: {
+            instructor: { id: user.id }
+          }
+        }
       };
     }
 
@@ -174,6 +183,24 @@ export default factories.createCoreController('api::quiz-attempt.quiz-attempt', 
       });
 
       if (!dbEntity || !dbEntity.student || dbEntity.student.id !== user.id) {
+        return ctx.forbidden('You are not authorized to view this quiz attempt.');
+      }
+    } else if (fullUser?.role?.type === 'instructor') {
+      const dbEntity = await strapi.db.query('api::quiz-attempt.quiz-attempt').findOne({
+        where: { documentId: ctx.params.id },
+        populate: {
+          quiz: {
+            populate: {
+              course: {
+                populate: ['instructor']
+              }
+            }
+          }
+        }
+      });
+      
+      const course = (dbEntity as any)?.quiz?.course;
+      if (!course || !course.instructor || course.instructor.id !== user.id) {
         return ctx.forbidden('You are not authorized to view this quiz attempt.');
       }
     }

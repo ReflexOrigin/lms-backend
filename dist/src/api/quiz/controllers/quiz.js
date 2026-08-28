@@ -3,15 +3,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strapi_1 = require("@strapi/strapi");
 exports.default = strapi_1.factories.createCoreController('api::quiz.quiz', ({ strapi }) => ({
     async find(ctx) {
+        var _a, _b, _c;
         const user = ctx.state.user;
-        if (user && user.role) {
-            if (user.role.type === 'instructor' && ctx.query.instructorView === 'true') {
+        if (user) {
+            const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+                where: { id: user.id },
+                populate: ['role']
+            });
+            if (((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'instructor' && ctx.query.instructorView === 'true') {
                 const query = { ...ctx.query };
                 delete query.instructorView;
                 const quizzes = await strapi.documents('api::quiz.quiz').findMany({
                     filters: {
                         ...(query.filters || {}),
-                        course: { instructor: { documentId: user.documentId } }
+                        course: { instructor: { documentId: fullUser.documentId } }
                     },
                     populate: query.populate,
                     status: 'draft'
@@ -19,8 +24,53 @@ exports.default = strapi_1.factories.createCoreController('api::quiz.quiz', ({ s
                 const sanitized = await this.sanitizeOutput(quizzes, ctx);
                 return { data: sanitized, meta: {} };
             }
+            else if (((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'student' || ((_c = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _c === void 0 ? void 0 : _c.type) === 'authenticated') {
+                const enrollments = await strapi.db.query('api::enrollment.enrollment').findMany({
+                    where: { student: user.id },
+                    populate: ['course']
+                });
+                const enrolledCourseIds = enrollments.map((e) => { var _a; return (_a = e.course) === null || _a === void 0 ? void 0 : _a.id; }).filter(Boolean);
+                if (enrolledCourseIds.length === 0) {
+                    return { data: [], meta: { pagination: { page: 1, pageSize: 25, pageCount: 0, total: 0 } } };
+                }
+                ctx.query.filters = {
+                    ...(ctx.query.filters || {}),
+                    course: { id: { $in: enrolledCourseIds } }
+                };
+            }
         }
         return super.find(ctx);
+    },
+    async findOne(ctx) {
+        var _a, _b;
+        const user = ctx.state.user;
+        if (!user)
+            return ctx.unauthorized();
+        const response = await super.findOne(ctx);
+        if (!response || !response.data)
+            return response;
+        const fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+            where: { id: user.id },
+            populate: ['role']
+        });
+        if (((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'student' || ((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'authenticated') {
+            const quiz = await strapi.documents('api::quiz.quiz').findOne({
+                documentId: ctx.params.id,
+                populate: ['course']
+            });
+            if (quiz && quiz.course) {
+                const enrollment = await strapi.db.query('api::enrollment.enrollment').findOne({
+                    where: { student: user.id, course: quiz.course.id }
+                });
+                if (!enrollment) {
+                    return ctx.forbidden('You are not enrolled in the course for this quiz.');
+                }
+            }
+            else if (!quiz) {
+                return ctx.notFound();
+            }
+        }
+        return response;
     },
     async create(ctx) {
         var _a, _b, _c, _d;
@@ -39,7 +89,7 @@ exports.default = strapi_1.factories.createCoreController('api::quiz.quiz', ({ s
             if (!course) {
                 return ctx.badRequest('Course not found');
             }
-            if (((_d = course.instructor) === null || _d === void 0 ? void 0 : _d.documentId) !== user.documentId) {
+            if (((_d = course.instructor) === null || _d === void 0 ? void 0 : _d.id) !== user.id) {
                 return ctx.unauthorized('You can only create quizzes for your own courses');
             }
         }

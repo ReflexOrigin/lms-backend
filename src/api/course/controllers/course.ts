@@ -24,6 +24,36 @@ export default factories.createCoreController('api::course.course', ({ strapi })
         console.log('Found courses count:', courses.length);
         
         const sanitized = await this.sanitizeOutput!(courses, ctx);
+
+        if (Array.isArray(sanitized)) {
+          for (let i = 0; i < sanitized.length; i++) {
+            const courseDoc = courses[i];
+            
+            const enrollments = await strapi.documents('api::enrollment.enrollment').findMany({
+              filters: { course: { documentId: courseDoc.documentId } }
+            });
+            sanitized[i].students = enrollments.length;
+            sanitized[i].completion = enrollments.length > 0 
+              ? Math.round(enrollments.reduce((sum: number, e: any) => sum + (e.progressPercentage || 0), 0) / enrollments.length)
+              : 0;
+              
+            const quizzes = await strapi.documents('api::quiz.quiz').findMany({
+              filters: { course: { documentId: courseDoc.documentId } }
+            });
+            const quizIds = quizzes.map((q: any) => q.documentId);
+            if (quizIds.length > 0) {
+              const attempts = await strapi.documents('api::quiz-attempt.quiz-attempt').findMany({
+                filters: { quiz: { documentId: { $in: quizIds } } }
+              });
+              sanitized[i].quizAvg = attempts.length > 0
+                ? Math.round(attempts.reduce((sum: number, a: any) => sum + Number(a.percentage || 0), 0) / attempts.length)
+                : 0;
+            } else {
+              sanitized[i].quizAvg = 0;
+            }
+          }
+        }
+        
         return { data: sanitized, meta: {} };
       }
     }
