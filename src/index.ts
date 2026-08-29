@@ -6,6 +6,16 @@ export default {
    * your application is initialized.
    */
   register({ strapi }: { strapi: Core.Strapi }) {
+    // Force secure flag for HTTPS proxies (Railway)
+    strapi.server.use(async (ctx: any, next: any) => {
+      const proto = ctx.request.headers['x-forwarded-proto'];
+      if (proto && proto.includes('https')) {
+        Object.defineProperty(ctx.request, 'secure', { get: () => true });
+        Object.defineProperty(ctx, 'secure', { get: () => true });
+      }
+      await next();
+    });
+
     const extensionService = strapi.plugin('users-permissions').controller('auth');
     const originalRegister = extensionService.register;
     
