@@ -37,6 +37,21 @@ export default {
    * your application gets started.
    */
   async bootstrap({ strapi }: { strapi: Core.Strapi }) {
+    // ── Step 0: Fix JWT Cookie setting in DB ──
+    const pluginStore = strapi.store({
+      environment: '',
+      type: 'plugin',
+      name: 'users-permissions',
+    });
+    
+    const advanced = (await pluginStore.get({ key: 'advanced' })) as any;
+    if (advanced && advanced.jwtManagement) {
+      delete advanced.jwtManagement;
+      if (advanced.sessions) delete advanced.sessions;
+      await pluginStore.set({ key: 'advanced', value: advanced });
+      strapi.log.info('✅ Disabled Strapi JWT Cookie Management in Database to fix Proxy Error');
+    }
+
     // ── Step 1: Seed custom roles ──
     const roleQuery = strapi.db.query('plugin::users-permissions.role');
     
