@@ -118,7 +118,7 @@ const PERMISSION_MAP = {
         'api::question.question': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::enrollment.enrollment': ['find', 'findOne'],
         'api::progress.progress': ['find', 'findOne'],
-        'api::blog-post.blog-post': ['find', 'findOne', 'create', 'update', 'delete'],
+        'api::blog-post.blog-post': ['find', 'findOne', 'create', 'update', 'delete', 'publishBlogPost', 'unpublishBlogPost'],
         'api::quiz-attempt.quiz-attempt': ['find', 'findOne'],
     },
     admin_role: {
@@ -129,7 +129,7 @@ const PERMISSION_MAP = {
         'api::question.question': ['find', 'findOne', 'create', 'update', 'delete'],
         'api::enrollment.enrollment': ['find', 'findOne', 'delete'],
         'api::progress.progress': ['find', 'findOne'],
-        'api::blog-post.blog-post': ['find', 'findOne', 'create', 'update', 'delete'],
+        'api::blog-post.blog-post': ['find', 'findOne', 'create', 'update', 'delete', 'publishBlogPost', 'unpublishBlogPost'],
         'api::quiz-attempt.quiz-attempt': ['find', 'findOne', 'delete'],
         'api::admin-custom.admin-custom': ['getStats', 'getUsers', 'updateUserRole', 'deleteUser', 'suspendUser'],
     },

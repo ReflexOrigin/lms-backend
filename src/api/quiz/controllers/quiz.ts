@@ -9,9 +9,8 @@ export default factories.createCoreController('api::quiz.quiz', ({ strapi }) => 
         populate: ['role']
       });
       
-      if ((fullUser?.role?.type === 'instructor' || fullUser?.role?.type === 'content_manager' || fullUser?.role?.type === 'admin_role') && ctx.query.managerView === 'true') {
+      if ((fullUser?.role?.type === 'instructor' || fullUser?.role?.type === 'content_manager' || fullUser?.role?.type === 'admin_role') && ctx.request.headers['x-manager-view'] === 'true') {
         const query = { ...ctx.query };
-        delete query.managerView;
         
         const filters: any = {
           ...(query.filters as object || {})

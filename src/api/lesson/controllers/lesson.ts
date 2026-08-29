@@ -4,9 +4,8 @@ export default factories.createCoreController('api::lesson.lesson', ({ strapi })
   async find(ctx: any) {
     const user = ctx.state.user;
     if (user && user.role) {
-      if ((user.role.type === 'instructor' || user.role.type === 'content_manager' || user.role.type === 'admin_role') && ctx.query.managerView === 'true') {
+      if ((user.role.type === 'instructor' || user.role.type === 'content_manager' || user.role.type === 'admin_role') && ctx.request.headers['x-manager-view'] === 'true') {
         const query = { ...ctx.query };
-        delete query.managerView;
         
         const filters: any = {
           ...(query.filters as object || {})

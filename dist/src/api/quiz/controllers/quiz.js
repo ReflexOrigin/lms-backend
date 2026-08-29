@@ -10,9 +10,8 @@ exports.default = strapi_1.factories.createCoreController('api::quiz.quiz', ({ s
                 where: { id: user.id },
                 populate: ['role']
             });
-            if ((((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'instructor' || ((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'content_manager' || ((_c = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _c === void 0 ? void 0 : _c.type) === 'admin_role') && ctx.query.managerView === 'true') {
+            if ((((_a = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _a === void 0 ? void 0 : _a.type) === 'instructor' || ((_b = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _b === void 0 ? void 0 : _b.type) === 'content_manager' || ((_c = fullUser === null || fullUser === void 0 ? void 0 : fullUser.role) === null || _c === void 0 ? void 0 : _c.type) === 'admin_role') && ctx.request.headers['x-manager-view'] === 'true') {
                 const query = { ...ctx.query };
-                delete query.managerView;
                 const filters = {
                     ...(query.filters || {})
                 };

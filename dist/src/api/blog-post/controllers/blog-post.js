@@ -32,5 +32,15 @@ exports.default = strapi_1.factories.createCoreController('api::blog-post.blog-p
             });
         }
         return response;
+    },
+    async publishBlogPost(ctx) {
+        const { documentId } = ctx.params;
+        const published = await strapi.documents('api::blog-post.blog-post').publish({ documentId });
+        return { data: published };
+    },
+    async unpublishBlogPost(ctx) {
+        const { documentId } = ctx.params;
+        const unpublished = await strapi.documents('api::blog-post.blog-post').unpublish({ documentId });
+        return { data: unpublished };
     }
 }));
