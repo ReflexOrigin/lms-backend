@@ -3,8 +3,16 @@ export default factories.createCoreController('api::course.course', ({ strapi })
   async find(ctx: any) {
     const user = ctx.state.user;
     console.log('GET /courses query:', JSON.stringify(ctx.query));
-    if (user && user.role) {
-      if ((user.role.type === 'instructor' || user.role.type === 'content_manager' || user.role.type === 'admin_role') && ctx.request.headers['x-manager-view'] === 'true') {
+    let fullUser = null;
+    if (user) {
+      fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { id: user.id },
+        populate: ['role']
+      });
+    }
+
+    if (fullUser && fullUser.role) {
+      if ((fullUser.role.type === 'instructor' || fullUser.role.type === 'content_manager' || fullUser.role.type === 'admin_role') && ctx.request.headers['x-manager-view'] === 'true') {
         const query = { ...ctx.query };
         
         // Use document service to bypass REST API draft permissions
@@ -13,8 +21,8 @@ export default factories.createCoreController('api::course.course', ({ strapi })
         };
         
         // Ensure instructors can only see their own courses
-        if (user.role.type === 'instructor') {
-          filters.instructor = { documentId: user.documentId };
+        if (fullUser.role.type === 'instructor') {
+          filters.instructor = { documentId: fullUser.documentId };
         }
         
         console.log('Manager course findMany filters:', JSON.stringify(filters, null, 2));
@@ -100,10 +108,18 @@ export default factories.createCoreController('api::course.course', ({ strapi })
     
     const response = await super.create(ctx);
     
-    if (user && user.role?.type === 'instructor' && response?.data?.documentId) {
+    let fullUser = null;
+    if (user) {
+      fullUser = await strapi.db.query('plugin::users-permissions.user').findOne({
+        where: { id: user.id },
+        populate: ['role']
+      });
+    }
+    
+    if (fullUser && (fullUser.role?.type === 'instructor' || fullUser.role?.type === 'content_manager' || fullUser.role?.type === 'admin_role') && response?.data?.documentId) {
       await strapi.documents('api::course.course').update({
         documentId: response.data.documentId,
-        data: { instructor: user.documentId }
+        data: { instructor: fullUser.documentId }
       });
     }
     return response;
