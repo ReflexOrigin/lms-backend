@@ -1,61 +1,31 @@
-# 🚀 Getting started with Strapi
+# LMS Backend (Strapi)
 
-Strapi comes with a full featured [Command Line Interface](https://docs.strapi.io/dev-docs/cli) (CLI) which lets you scaffold and manage your project in seconds.
+This repository contains the backend for the Learning Management System, built with Strapi and utilizing a SQLite database by default for local development.
 
-### `develop`
+## Prerequisites
 
-Start your Strapi application with autoReload enabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-develop)
+- **Node.js**: Version 20.x or higher
+- **npm**: Version 6.x or higher
 
-```
-npm run develop
-# or
-yarn develop
-```
+## Local Setup
 
-### `start`
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-Start your Strapi application with autoReload disabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-start)
+2. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
 
-```
-npm run start
-# or
-yarn start
-```
+3. **Access the Backend**:
+   - The Strapi admin panel is available at: [http://localhost:1337/admin](http://localhost:1337/admin)
+   - The API is available at: [http://localhost:1337/api](http://localhost:1337/api)
+   
+   *Note: On your first run, Strapi will prompt you to create an admin user account to access the dashboard.*
 
-### `build`
+## Troubleshooting
 
-Build your admin panel. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-build)
-
-```
-npm run build
-# or
-yarn build
-```
-
-## ⚙️ Deployment
-
-Strapi gives you many possible deployment options for your project including [Strapi Cloud](https://cloud.strapi.io). Browse the [deployment section of the documentation](https://docs.strapi.io/dev-docs/deployment) to find the best solution for your use case.
-
-```
-yarn strapi deploy
-```
-
-## 📚 Learn more
-
-- [Resource center](https://strapi.io/resource-center) - Strapi resource center.
-- [Strapi documentation](https://docs.strapi.io) - Official Strapi documentation.
-- [Strapi tutorials](https://strapi.io/tutorials) - List of tutorials made by the core team and the community.
-- [Strapi blog](https://strapi.io/blog) - Official Strapi blog containing articles made by the Strapi team and the community.
-- [Changelog](https://strapi.io/changelog) - Find out about the Strapi product updates, new features and general improvements.
-
-Feel free to check out the [Strapi GitHub repository](https://github.com/strapi/strapi). Your feedback and contributions are welcome!
-
-## ✨ Community
-
-- [Discord](https://discord.strapi.io) - Come chat with the Strapi community including the core team.
-- [Forum](https://forum.strapi.io/) - Place to discuss, ask questions and find answers, show your Strapi project and get feedback or just talk with other Community members.
-- [Awesome Strapi](https://github.com/strapi/awesome-strapi) - A curated list of awesome things related to Strapi.
-
----
-
-<sub>🤫 Psst! [Strapi is hiring](https://strapi.io/careers).</sub>
+- **Port Conflicts**: If port `1337` is already in use, the development server will fail to start. You can close the conflicting applications or specify different ports in your configuration.
+- **Node Version**: If you encounter dependency issues or build failures, ensure your Node.js version meets the engine requirements (`>= 20.0.0`).
